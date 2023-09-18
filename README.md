@@ -12,7 +12,7 @@ Term: Fall 2023
 + Projec title: []
 + This project is conducted by Tianlun Lin
 
-+ Project summary: [a short summary] 
++ Project summary: [a short summary]
 
 Following [suggestions](http://nicercode.github.io/blog/2013-04-05-projects/) by [RICH FITZJOHN](http://nicercode.github.io/about/#Team) (@richfitz). This folder is orgarnized as follows.
 
