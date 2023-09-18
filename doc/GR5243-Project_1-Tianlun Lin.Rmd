@@ -3,8 +3,9 @@ title: "GR5243-Project_1-Tianlun Lin"
 output: html_notebook
 ---
 
-
 ```{r libraries, include=FALSE, echo=FALSE}
+# Load All Packages
+library(readr)
 library(word2vec)
 library(tidytext)
 library(dplyr)
@@ -14,5 +15,141 @@ library(uwot)
 library(udpipe)
 ```
 
+```{r data, warning=FALSE, echo=FALSE}
+# Load & Join Requiared Data
+
+# Import the processed happy moment data
+filepath_1 <- "/Users/lintianlun/Documents/GitHub/ads-fall2023-project1-tianlunlin/output/processed_moments.csv"
+hm_data <- read_csv(filepath_1)
+
+# Import the demographic data
+filepath_2 <- "/Users/lintianlun/Documents/GitHub/ads-fall2023-project1-tianlunlin/data/demographic.csv"
+demo_data <- read_csv(filepath_2)
+```
+
+```{r echo=FALSE}
+# Join the two imported table based on the common column 'wid'
+joined_data <- merge(hm_data, demo_data)
+```
+
+## Question Interested
+*Question*: What is the effect of health on happiness of single and married people, respectively?
+
+## General Analysis between Happiness and Health
+```{r lower, echo=FALSE}
+lower_sentence <- tolower(joined_data$cleaned_hm)
+```
+
+To observe the meanings of words much clearer, we can "lemmatize" the sentences according to words' nature. 
+```{r lemmatizing, echo=FALSE}
+process_text <- function(text_str, n_topics){
+  # Using udpipe() function to handle the text data
+  anno <- udpipe(text_str, "english", trace = 10000, parallel.cores = 1)
+  # filter the results above with 3 conditions
+  anno <- subset(anno, !is.na(lemma) & nchar(lemma) > 1 & !upos %in% "PUNCT")
+  # connect words with its nature using '//'
+  anno$text <- sprintf("%s//%s", anno$lemma, anno$upos)
+  # Update the original text we inputed
+  text_str <- paste.data.frame(anno, term = "text", group = "doc_id", collapse = " ")
+  # Apply the word2vec model
+  model <- word2vec(x = text_str$text, dim = n_topics, iter = 20, split = c(" ", ".\n?!"))
+  # Convert the vectors from above word2vec model into matrix
+  embedding <- as.matrix(model)
+  
+  # Represent the embedding with the umap dimension reduction method
+  viz <- umap(embedding, n_neighbors = 15, n_threads = 2)
+  rownames(viz) <- rownames(embedding)
+  
+  # Create a data.frame that store the words and their corresponding nature
+  df <- data.frame(word = gsub("//.+", "", rownames(viz)),
+                   upos = gsub(".+//", "", rownames(viz)),
+                   x = viz[, 1], y = viz[, 2],
+                   stringsAsFactors = FALSE)
+  df <- subset(df, upos %in% c("ADJ", "NOUN"))
+  return(list('data'=df,'model'=model))
+}
+
+overall_res <- process_text(lower_sentence, 20)
+```
+
+Now, we hope to obtain the words most similar to health and happiness respectively.
+```{r most similar to health and happiness, echo=FALSE}
+like_health <- predict(overall_res$model, c("health//NOUN"), type = "nearest", top_n = 20)
+word_list_health <- like_health$`health//NOUN`$term2
+
+like_happiness <- predict(overall_res$model, c("happy//ADJ"), type = "nearest", top_n = 50)
+word_list_happiness <- like_happiness$`happy//ADJ`$term2
+```
+
+```{r slicing, echo=FALSE}
+health_df <- subset(overall_res$data, rownames(overall_res$data) %in% word_list_health)
+happiness_df <- subset(overall_res$data, rownames(overall_res$data) %in% word_list_happiness)
+```
+
+```{r umap plot, echo=FALSE}
+options(ggrepel.max.overlaps = Inf) 
+ggplot(data = happiness_df, aes(x = x, y = y, label = word, color = 'blue')) +
+  geom_text_repel() + 
+  geom_text_repel(data = health_df, aes(x = x, y = y, label = word, color = 'red')) + 
+  labs(title = "Most Similar Words to Health & Happiness")
+save.image('/Users/lintianlun/Documents/GitHub/ads-fall2023-project1-tianlunlin/figs/generel_word2vec.png')
+```
+
+## Apply Word2vec Model to "Single" Group and "Married" Group
+```{r single, echo=FALSE}
+# Separate the original happy moment to "single" and "married"
+text_single <- tolower(joined_data[joined_data['marital'] == 'single', ]$cleaned_hm)
+
+single_res <- process_text(text_single, 20)
+
+like_health_s <- predict(single_res$model, c("health//NOUN"), type = "nearest", top_n = 20)
+word_list_health_s <- like_health_s$`health//NOUN`$term2
+
+like_happiness_s <- predict(single_res$model, c("happy//ADJ"), type = "nearest", top_n = 50)
+word_list_happiness_s <- like_happiness_s$`happy//ADJ`$term2
+
+health_df_s <- subset(single_res$data, rownames(single_res$data) %in% word_list_health_s)
+happiness_df_s <- subset(single_res$data, rownames(single_res$data) %in% word_list_happiness_s)
+```
+
+```{r married, echo=FALSE}
+# Separate the original happy moment to "single" and "married"
+text_married <- tolower(joined_data[joined_data['marital'] == 'married', ]$cleaned_hm)
+
+married_res <- process_text(text_married, 20)
+
+like_health_m <- predict(married_res$model, c("health//NOUN"), type = "nearest", top_n = 20)
+word_list_health_m <- like_health_m$`health//NOUN`$term2
+
+like_happiness_m <- predict(married_res$model, c("happy//ADJ"), type = "nearest", top_n = 50)
+word_list_happiness_m <- like_happiness_m$`happy//ADJ`$term2
+
+health_df_m <- subset(married_res$data, rownames(married_res$data) %in% word_list_health_m)
+happiness_df_m <- subset(married_res$data, rownames(married_res$data) %in% word_list_happiness_m)
+```
+
+```{r, echo=FALSE}
+options(ggrepel.max.overlaps = Inf) 
+ggplot(data = health_df_s, aes(x = x, y = y, label = word, color = 'blue')) +
+  geom_text_repel() + 
+  geom_text_repel(data = happiness_df_s, aes(x = x, y = y, label = word, color = 'red')) +
+  scale_color_manual(values = c("blue", "red"),
+                     labels = c("single - health", 'single - happiness')) + 
+  labs(title = "Most Similar Words to Health & Happiness for Single")
+save.image('/Users/lintianlun/Documents/GitHub/ads-fall2023-project1-tianlunlin/figs/Single_result.png')
+```
+
+```{r, echo=FALSE}
+options(ggrepel.max.overlaps = Inf) 
+ggplot(data = health_df_m, aes(x = x, y = y, label = word, color = 'blue')) +
+  geom_text_repel() + 
+  geom_text_repel(data = happiness_df_m, aes(x = x, y = y, label = word, color = 'red')) +
+  scale_color_manual(values = c("blue", "red"),
+                     labels = c("married - health", 'married - happiness')) + 
+  labs(title = "Most Similar Words to Health & Happiness for Married")
+save.image('/Users/lintianlun/Documents/GitHub/ads-fall2023-project1-tianlunlin/figs/Married_result.png')
+```
+
+By comparing the resulted umap plot above for both single people and married people, we can observe that health seems to be a topic that more correlated to the group of married people since the clusters of words representing "health" and "happiness" are more closed to each other.
 
 
