@@ -40,8 +40,8 @@ joined_data <- merge(hm_data, demo_data)
 lower_sentence <- tolower(joined_data$cleaned_hm)
 ```
 
-To observe the meanings of words much clearer, we can "lemmatize" the sentences according to words' nature. 
-```{r lemmatizing, echo=FALSE}
+To observe the meanings of words much clearer, we can "lemmatize" the sentences according to words' nature.
+```{r lemmatizing, include=FALSE, echo=FALSE}
 process_text <- function(text_str, n_topics){
   # Using udpipe() function to handle the text data
   anno <- udpipe(text_str, "english", trace = 10000, parallel.cores = 1)
@@ -72,7 +72,7 @@ process_text <- function(text_str, n_topics){
 overall_res <- process_text(lower_sentence, 20)
 ```
 
-Now, we hope to obtain the words most similar to health and happiness respectively.
+Now, we hope to obtain the words most similar to health and happiness respectively. The result can be represented in a plot using the output of word2vec model.
 ```{r most similar to health and happiness, echo=FALSE}
 like_health <- predict(overall_res$model, c("health//NOUN"), type = "nearest", top_n = 20)
 word_list_health <- like_health$`health//NOUN`$term2
@@ -91,12 +91,15 @@ options(ggrepel.max.overlaps = Inf)
 ggplot(data = happiness_df, aes(x = x, y = y, label = word, color = 'blue')) +
   geom_text_repel() + 
   geom_text_repel(data = health_df, aes(x = x, y = y, label = word, color = 'red')) + 
+  scale_color_manual(values = c("blue", "red"), labels = c("happiness", 'health')) + 
   labs(title = "Most Similar Words to Health & Happiness")
 save.image('/Users/lintianlun/Documents/GitHub/ads-fall2023-project1-tianlunlin/figs/generel_word2vec.png')
 ```
+From the plot above, we can observe that there is a correlation between the words about "health" and happiness of people to some extend since the two clusters of points are relatively close to each other.
+
 
 ## Apply Word2vec Model to "Single" Group and "Married" Group
-```{r single, echo=FALSE}
+```{r single, include=FALSE, echo=FALSE}
 # Separate the original happy moment to "single" and "married"
 text_single <- tolower(joined_data[joined_data['marital'] == 'single', ]$cleaned_hm)
 
@@ -112,7 +115,7 @@ health_df_s <- subset(single_res$data, rownames(single_res$data) %in% word_list_
 happiness_df_s <- subset(single_res$data, rownames(single_res$data) %in% word_list_happiness_s)
 ```
 
-```{r married, echo=FALSE}
+```{r married, include=FALSE, echo=FALSE}
 # Separate the original happy moment to "single" and "married"
 text_married <- tolower(joined_data[joined_data['marital'] == 'married', ]$cleaned_hm)
 
@@ -150,6 +153,7 @@ ggplot(data = health_df_m, aes(x = x, y = y, label = word, color = 'blue')) +
 save.image('/Users/lintianlun/Documents/GitHub/ads-fall2023-project1-tianlunlin/figs/Married_result.png')
 ```
 
-By comparing the resulted umap plot above for both single people and married people, we can observe that health seems to be a topic that more correlated to the group of married people since the clusters of words representing "health" and "happiness" are more closed to each other.
+## Colclusion
+From the overall plot in the second section, we can claim that there should be a relationship between "health" word and "happiness" words. Moreover, by comparing the resulted umap plot for both single people and married people, we can observe that health seems to be a topic that more correlated to the group of married people since the clusters of words representing "health" and "happiness" are more closed to each other.
 
 
