@@ -35,6 +35,14 @@ joined_data <- merge(hm_data, demo_data)
 ## Question Interested
 *Question*: What is the effect of health on happiness of single and married people, respectively?
 
+## Analyese for Orginial Data
+```{r echo=FALSE}
+mariral_table <- table(joined_data$marital)
+pie(mariral_table, main = "Marital Status from Original Data Set")
+```
+From the pie chart above, one can observe that most people in the data set can be categorized to either "single" or "married". Moreover, there also exist other groups, while the proportion of such groups are limited compared to the biggest two groups. Thus, when doing the following analysis, we only focus on the groups of "single" and "married" people.
+
+
 ## General Analysis between Happiness and Health
 ```{r lower, echo=FALSE}
 lower_sentence <- tolower(joined_data$cleaned_hm)
